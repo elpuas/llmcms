@@ -1,0 +1,110 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+description: Project Rules
+globs: 
+alwaysApply: false
+---
+
+1. Product Vision
+
+LLMCMS is a local-first, developer-oriented CMS designed to work offline, using Markdown-based `.lmdx` files that blend content with AI directives. The goal is to make content creation programmable, composable, and portable, with optional AI enhancements via local models (Ollama) or OpenAI.
+
+The CMS prioritizes:
+- Simplicity over feature bloat
+- AI as a tool, not a requirement
+- Git/GitHub integration for deployment
+- Full transparency of content and code
+
+
+⸻
+
+2. Core Content Model
+
+Each page is stored as a `.lmdx` file, which includes:
+
+- Frontmatter block (`---`) with metadata
+- Markdown content with optional embedded JSX
+- HTML comments starting with `@` that are meant for the AI agent
+
+Example:
+
+---
+title: "How the CMS Works"
+tags: ["guide"]
+---
+
+# Overview
+
+This is a guide...
+
+<!-- @summarize -->
+
+The agent should parse and respect the above structure.
+
+
+⸻
+
+3. Files and Folders Definitions
+Folder	Purpose
+/src/	UI components, hooks, utilities
+/content/	User-created .lmdx content
+/templates/	Astro export templates
+/public/	Static assets
+/export/	Output .zip with site + content
+/context/	Change logs per task
+/docs/	Developer documentation
+
+
+⸻
+
+4. Component Glossary
+
+AppShell.astro        – Base layout with sidebar/content slots
+MarkdownEditor.jsx    – Uses Milkdown to edit content
+LivePreview.jsx       – Renders Markdown content as HTML
+FileMenu.jsx          – New / Open / Save / Export buttons
+StatusBar.jsx         – Save state, AI model info
+AIActionsPanel.jsx    – Buttons to trigger AI actions
+
+
+⸻
+
+5. Agent-Specific Prompts (AI prompt library)
+
+@prompt:/summarize
+"Summarize the following content in 2 sentences, keeping the developer tone."
+
+@prompt:/rewrite
+"Rewrite this paragraph to be clearer and more concise."
+
+@prompt:/generate-title
+"Generate a clear and short title for this document."
+
+
+⸻
+
+6. Success Criteria
+
+A component is considered complete when:
+- It follows the code rules (no Tailwind, proper naming)
+- It is isolated and testable
+- It is documented in `/context/<task>.md`
+- It compiles and renders correctly (if UI)
+- It does not break existing structure or other tickets
+
+
+⸻
+
+ 7. Guardrails
+
+- Do not refactor files outside the scope of the current ticket
+- Do not modify any file without adding it to the context log
+- Do not create new folders unless explicitly instructed
+- Do not write default content – use placeholders or stubs
+
+
+⸻

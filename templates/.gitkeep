@@ -1,0 +1,11 @@
+# Templates Directory
+
+This directory stores content templates for the LLMCMS system.
+
+Available template types:
+- default: Basic content template
+- blog: Blog post template
+- page: Static page template
+- article: Article template
+
+Templates use the Astro templating system and can include LLM-powered content generation. 

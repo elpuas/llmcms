@@ -1,0 +1,10 @@
+# Content Directory
+
+This directory stores all content files for the LLMCMS system.
+
+Supported formats:
+- Markdown (.md, .mdx)
+- JSON (.json)
+- Plain text (.txt)
+
+Content files placed here will be processed by the CMS and made available for editing and export. 

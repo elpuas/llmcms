@@ -1,0 +1,11 @@
+# Export Directory
+
+This directory contains exported content in various formats.
+
+Generated formats:
+- HTML (.html)
+- Markdown (.md)
+- JSON (.json)
+- PDF (.pdf)
+
+Files in this directory are automatically generated and should not be manually edited. 

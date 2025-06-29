@@ -1,0 +1,141 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+description: Project Rules
+globs: 
+alwaysApply: false
+---
+
+LLMCMS – Agent Rules 
+
+# LLMCMS Agent Rules – Cursor Context
+
+## GENERAL PRINCIPLES
+
+1. This is a local-first CMS project called LLMCMS.
+2. It uses `.lmdx` files (Markdown + JS + annotations) as primary content source.
+3. The CMS runs entirely in the browser and optionally as a PWA or Tauri app.
+4. All AI functionality connects to a local Ollama instance via HTTP API.
+5. Styling is done with vanilla CSS or minimal frameworks (e.g., PicoCSS).
+6. DO NOT use Tailwind, Chakra, Bootstrap, or any large UI framework.
+7. The frontend uses Astro with optional React Islands.
+8. All changes must be documented in a `/context/` folder as described below.
+
+---
+
+## FILE NAMING
+
+- Code files must follow kebab-case or camelCase, depending on language conventions.
+- Components go into `/src/components/`, utilities into `/src/utils/`, and AI tools into `/src/ai/`.
+
+---
+
+## FILE FORMATTING
+
+- All code must follow Prettier rules:
+  - `semi: false`
+  - `useTabs: true`
+  - `singleQuote: true`
+- Use `const` and `let` – never `var`.
+- In JSX, use ternary: `thing ? 'yes' : null`, avoid `thing && 'yes'`.
+- Prefer function declarations over function expressions.
+- Avoid deeply nested logic; extract into helpers when needed.
+
+---
+
+## CONTEXT LOGGING RULE
+
+After each task, you MUST write a file in:
+
+/context/__.md
+
+**Example:**
+
+context/0003__add-markdown-editor-component.md
+
+---
+
+## CONTEXT FILE STRUCTURE
+
+Each context file must include:
+
+```md
+# [TASK-ID] – [Title in Sentence Case]
+
+## Summary
+
+Brief description of what was done.
+
+## Files Created
+
+- [path/to/file1.js]
+- [path/to/file2.jsx]
+
+## Reasoning
+
+Explain why these changes were made. Reference any constraints from rules.
+
+## AI Prompts Used
+
+Summarize what type of prompt or logic was followed (optional, if applicable).
+
+
+⸻
+
+TASK COMMIT RULE
+
+Every commit (or file write) must correspond to a single logical task or feature.
+
+DO NOT batch unrelated changes in the same commit or context entry.
+
+⸻
+
+PERMITTED DEPENDENCIES
+
+Only install libraries that are explicitly listed in cms.config.js. If unsure, request approval. Currently approved:
+	•	milkdown
+	•	remark, rehype
+	•	idb
+	•	jszip
+	•	open-props (optional)
+	•	vite, astro, react
+
+⸻
+
+LMDX-SPECIFIC RULES
+	•	Treat .lmdx files as MDX with special comments starting with <!-- @.
+	•	Parse and respect inline instructions like:
+	•	@summarize, @rewrite, @generate-title
+	•	If agent is modifying .lmdx content, annotate changes in the context file using diff-style:
+
+- ## Old title
++ ## New AI-enhanced title
+
+
+⸻
+
+FINAL EXPORT FORMAT
+
+Every working version must support .zip export with this structure:
+
+/content/*.lmdx
+/templates/astro-base/
+netlify.toml (optional)
+
+
+⸻
+
+AI SAFEGUARDS
+	•	Do not hardcode OpenAI API keys. Use local AI via Ollama unless instructed.
+	•	Log all AI operations in the context file if they modify user content.
+
+⸻
+
+DEBUGGING AND TESTING
+	•	If you’re unsure, save partial progress in context/ and exit cleanly.
+	•	Never overwrite user content without confirmation logic.
+
+---
