@@ -1,5 +1,6 @@
 ---
 import AppShell from '../components/AppShell.astro'
+import MarkdownEditor from '../components/MarkdownEditor.jsx'
 ---
 
 <html lang="en">
@@ -16,15 +17,26 @@ import AppShell from '../components/AppShell.astro'
 				<h3>Navigation</h3>
 				<ul>
 					<li><a href="#content">Content</a></li>
+					<li><a href="#editor">Editor</a></li>
 					<li><a href="#settings">Settings</a></li>
 					<li><a href="#export">Export</a></li>
+				</ul>
+				
+				<h3>Quick Actions</h3>
+				<ul>
+					<li><a href="#new">New Document</a></li>
+					<li><a href="#save">Save</a></li>
+					<li><a href="#preview">Preview</a></li>
 				</ul>
 			</div>
 			
 			<div slot="content">
-				<h1>Welcome to LLMCMS</h1>
-				<p>Your local-first content management system is ready to use.</p>
-				<p>This is a demonstration of the AppShell component with sidebar and content slots.</p>
+				<h1>LLMCMS Editor</h1>
+				<p>Welcome to your local-first content management system. Start editing below:</p>
+				
+								<div style="height: 600px; margin-top: 1rem;">
+					<MarkdownEditor client:load />
+				</div>
 			</div>
 		</AppShell>
 	</body>

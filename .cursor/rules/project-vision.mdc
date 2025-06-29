@@ -6,7 +6,7 @@ alwaysApply: true
 ---
 description: Project Rules
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 
 1. Product Vision

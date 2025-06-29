@@ -1,0 +1,350 @@
+/* MarkdownEditor.css - Modern CSS for Toast UI Editor */
+
+.markdown-editor {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	border: 1px solid #d1d5db;
+	border-radius: 0.5rem;
+	overflow: hidden;
+	background: white;
+	font-family: system-ui, -apple-system, sans-serif;
+	container-type: inline-size;
+	container-name: editor;
+	padding: 0;
+
+	/* Header toolbar styling */
+	& .editor-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.75rem 1rem;
+		background-color: #f9fafb;
+		border-bottom: 1px solid #e5e7eb;
+		font-size: 0.875rem;
+		flex-shrink: 0;
+
+		& .editor-title {
+			font-weight: 600;
+			color: #374151;
+		}
+
+		& .editor-status {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			color: #6b7280;
+
+			& .status-indicator {
+				color: #10b981;
+				font-size: 0.75rem;
+			}
+		}
+	}
+
+	/* Main content area */
+	& .editor-content {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		position: relative;
+
+		/* Focus state enhancement */
+		&:has(.toast-editor-container:focus-within) {
+			outline: 2px solid #3b82f6;
+			outline-offset: -2px;
+		}
+	}
+
+	/* Toast UI Editor container */
+	& .toast-editor-container {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+
+		/* Toast UI Editor styling overrides */
+		& .toastui-editor-defaultUI {
+			border: none;
+			box-shadow: none;
+			font-family: inherit;
+
+			& .toastui-editor-toolbar {
+				background-color: #f9fafb;
+				border-bottom: 1px solid #e5e7eb;
+				padding: 0.5rem 0.75rem;
+
+				& .toastui-editor-toolbar-group {
+					border: none;
+					margin-right: 0.5rem;
+
+					&:last-child {
+						margin-right: 0;
+					}
+				}
+
+				& .toastui-editor-toolbar-divider {
+					background-color: #e5e7eb;
+					width: 1px;
+					height: 1.25rem;
+					margin: 0 0.25rem;
+				}
+
+				& .toastui-editor-toolbar-icons {
+					display: flex;
+					align-items: center;
+					gap: 0.125rem;
+
+					& button {
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						width: 2rem;
+						height: 2rem;
+						border: 1px solid transparent;
+						border-radius: 0.375rem;
+						background: none;
+						color: #374151;
+						cursor: pointer;
+						transition: all 0.15s ease;
+
+						&:hover {
+							background-color: #e5e7eb;
+							border-color: #d1d5db;
+						}
+
+						&:is(.active, [aria-pressed="true"]) {
+							background-color: #3b82f6;
+							color: white;
+							border-color: #2563eb;
+						}
+
+						&:focus {
+							outline: 2px solid #3b82f6;
+							outline-offset: 2px;
+						}
+					}
+				}
+			}
+
+			& .toastui-editor-main {
+				background: white;
+
+				& .toastui-editor {
+					background: white;
+					color: #374151;
+					font-size: 16px;
+					line-height: 1.7;
+
+					/* WYSIWYG mode styling */
+					& .toastui-editor-contents {
+						padding: 1.5rem;
+						min-height: 400px;
+
+						/* Typography */
+						& :is(h1, h2, h3, h4, h5, h6) {
+							font-weight: 600;
+							line-height: 1.3;
+							color: #1f2937;
+							margin: 0.75rem 0 0.5rem 0;
+
+							&:first-child {
+								margin-top: 0;
+							}
+						}
+
+						& h1 {
+							font-size: 2rem;
+							font-weight: 800;
+							line-height: 1.2;
+							margin-bottom: 1rem;
+						}
+
+						& h2 {
+							font-size: 1.5rem;
+							font-weight: 700;
+							margin: 1.5rem 0 0.75rem 0;
+						}
+
+						& h3 {
+							font-size: 1.25rem;
+							margin: 1.25rem 0 0.5rem 0;
+						}
+
+						& p {
+							margin: 0.75rem 0;
+							color: #374151;
+						}
+
+						& :is(ul, ol) {
+							margin: 0.75rem 0;
+							padding-left: 1.5rem;
+
+							& li {
+								margin: 0.25rem 0;
+								color: #374151;
+							}
+						}
+
+						& blockquote {
+							border-left: 4px solid #3b82f6;
+							padding-left: 1rem;
+							margin: 1rem 0;
+							color: #6b7280;
+							font-style: italic;
+							background: #f8fafc;
+							border-radius: 0 4px 4px 0;
+						}
+
+						& code {
+							background-color: #f1f5f9;
+							padding: 0.125rem 0.25rem;
+							border-radius: 0.25rem;
+							font-size: 0.9em;
+							font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+							color: #e11d48;
+						}
+
+						& pre {
+							background-color: #1e293b;
+							color: #f1f5f9;
+							padding: 1rem;
+							border-radius: 0.5rem;
+							overflow-x: auto;
+							margin: 1rem 0;
+							font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+
+							& code {
+								background: none;
+								color: inherit;
+								padding: 0;
+							}
+						}
+
+						& :is(strong, b) {
+							font-weight: 600;
+							color: #1f2937;
+						}
+
+						& :is(em, i) {
+							font-style: italic;
+							color: #374151;
+						}
+
+						& a {
+							color: #3b82f6;
+							text-decoration: underline;
+							text-underline-offset: 2px;
+
+							&:hover {
+								color: #1d4ed8;
+							}
+						}
+
+						& table {
+							border-collapse: collapse;
+							width: 100%;
+							margin: 1rem 0;
+
+							& :is(th, td) {
+								border: 1px solid #e5e7eb;
+								padding: 0.5rem;
+								text-align: left;
+							}
+
+							& th {
+								background-color: #f8fafc;
+								font-weight: 600;
+							}
+						}
+
+						& ::selection {
+							background-color: #dbeafe;
+						}
+
+						& hr {
+							border: none;
+							border-top: 1px solid #e5e7eb;
+							margin: 2rem 0;
+						}
+
+						/* Task list styling */
+						& .task-list-item {
+							list-style: none;
+							margin-left: -1.5rem;
+
+							& input[type="checkbox"] {
+								margin-right: 0.5rem;
+							}
+						}
+					}
+
+					/* Markdown mode styling (hidden but keeping for consistency) */
+					& .toastui-editor-md-container {
+						& .CodeMirror {
+							font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+							font-size: 14px;
+							line-height: 1.6;
+							padding: 1rem;
+						}
+					}
+
+					/* Preview mode styling */
+					& .toastui-editor-md-preview {
+						padding: 1.5rem;
+						background: white;
+						border-left: 1px solid #e5e7eb;
+					}
+				}
+			}
+
+			/* Hide mode switch completely since hideModeSwitch: true */
+			& .toastui-editor-mode-switch {
+				display: none;
+			}
+		}
+	}
+}
+
+/* Container queries for responsive behavior */
+@container editor (min-width: 600px) {
+	.markdown-editor .editor-header {
+		padding: 1rem 1.5rem;
+	}
+
+	.markdown-editor .toast-editor-container .toastui-editor-toolbar {
+		padding: 0.75rem 1.5rem;
+
+		& .toastui-editor-toolbar-icons button {
+			width: 2.25rem;
+			height: 2.25rem;
+		}
+	}
+
+	.markdown-editor .toast-editor-container .toastui-editor-contents {
+		padding: 2rem;
+	}
+}
+
+@container editor (max-width: 400px) {
+	.markdown-editor .editor-header {
+		flex-direction: column;
+		gap: 0.5rem;
+		padding: 0.75rem;
+	}
+
+	.markdown-editor .toast-editor-container .toastui-editor-toolbar {
+		padding: 0.5rem;
+
+		& .toastui-editor-toolbar-icons button {
+			width: 1.75rem;
+			height: 1.75rem;
+		}
+	}
+
+	.markdown-editor .toast-editor-container .toastui-editor-contents {
+		padding: 1rem;
+		font-size: 14px;
+	}
+} 

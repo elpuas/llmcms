@@ -1,0 +1,35 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+description: CSS Rules for LLMCMS
+globs: 
+alwaysApply: true
+---
+
+The LLMCMS project uses vanilla CSS or minimal frameworks only. TailwindCSS, Bootstrap, and utility-heavy frameworks are not allowed.
+The CSS must be modern, semantic, and scoped to components when necessary.
+
+Allowed
+	•	CSS Nesting native
+	•	:is() for selector grouping
+	•	:not() for exclusion rules
+	•	:has() for parent-child state logic (progressive enhancement only)
+	•	:where() for unstyled grouping
+	•	Container queries (@container) for responsive layout
+	•	CSS custom properties (--var-name) defined in :root
+
+ Conventions
+	•	Styles for each component must be placed in either:
+	•	A separate .css file with the same name as the component
+	•	Or a global styles/ folder with clear separation
+	•	Avoid global selectors unless targeting standard tags (body, html)
+	•	Prefer BEM-style or scoped class naming if working in global styles
+
+Not Allowed
+	•	TailwindCSS, Chakra, Bootstrap, Bulma, Material UI
+	•	Excessive specificity hacks
+	•	Use of !important unless justified in context file
+	•	Vendor-prefixed properties
