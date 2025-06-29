@@ -1,6 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './Sidebar.css'
-import { createContentFile, generateMarkdown } from '../utils/contentManager.js'
+import { createContentFile, generateMarkdown, saveContentFile } from '../utils/contentManager.js'
+import { 
+	isFileSystemAccessSupported, 
+	listContentFiles, 
+	isDirectoryAccessConfigured,
+	writeContentFile,
+	readContentFile,
+	resetDirectoryAccess
+} from '../utils/fileSystemManager.js'
 import JSZip from 'jszip'
 
 export default function Sidebar() {
@@ -8,23 +16,148 @@ export default function Sidebar() {
 	const [isCreating, setIsCreating] = useState(false)
 	const [isExporting, setIsExporting] = useState(false)
 	const [status, setStatus] = useState('')
+	const [contentFiles, setContentFiles] = useState([])
+	const [isFileSystemSupported, setIsFileSystemSupported] = useState(null)
+	const [isLoadingFiles, setIsLoadingFiles] = useState(false)
+	const [showBrowserWarning, setShowBrowserWarning] = useState(false)
+
+	// Check browser support and load files on mount
+	useEffect(() => {
+		checkBrowserSupport()
+		loadContentFiles()
+		
+		// Listen for directory configuration events
+		const handleDirectoryConfigured = () => {
+			console.log('🎯 Directory configured, refreshing file list...')
+			loadContentFiles()
+		}
+		
+		window.addEventListener('llmcms:directory-configured', handleDirectoryConfigured)
+		
+		return () => {
+			window.removeEventListener('llmcms:directory-configured', handleDirectoryConfigured)
+		}
+	}, [])
+
+	// Check if File System Access API is supported
+	const checkBrowserSupport = async () => {
+		try {
+			const isSupported = isFileSystemAccessSupported()
+			setIsFileSystemSupported(isSupported)
+			setShowBrowserWarning(!isSupported)
+		} catch (error) {
+			console.error('Error checking browser support:', error)
+			setIsFileSystemSupported(false)
+			setShowBrowserWarning(true)
+		}
+	}
+
+	// Load content files from directory (only if already configured)
+	const loadContentFiles = async () => {
+		if (isFileSystemSupported === false) return
+		
+		setIsLoadingFiles(true)
+		try {
+			// Only try to list files if directory access is already configured
+			// This prevents triggering directory picker on page load
+			const isConfigured = await isDirectoryAccessConfigured()
+			if (isConfigured) {
+				const result = await listContentFiles()
+				if (result.success) {
+					setContentFiles(result.files)
+				}
+			} else {
+				// Clear any existing file list if no directory configured
+				setContentFiles([])
+			}
+		} catch (error) {
+			console.error('Error loading content files:', error)
+			// Don't show error for this - it's expected if no directory is configured
+			setContentFiles([])
+		} finally {
+			setIsLoadingFiles(false)
+		}
+	}
+
+	// Refresh file list after operations
+	const refreshFileList = async () => {
+		if (isFileSystemSupported) {
+			await loadContentFiles()
+		}
+	}
 
 	const handleNewDocument = () => {
 		setShowNewDocumentModal(true)
 	}
 
 	const handleSaveCurrent = async () => {
+		setStatus('💾 Saving current document...')
+		
 		try {
-			// Dispatch custom event to tell the editor to save
-			const saveEvent = new CustomEvent('llmcms:save-current')
-			window.dispatchEvent(saveEvent)
+			if (!isFileSystemAccessSupported()) {
+				setStatus('❌ File System Access API not supported. Please use Chrome, Edge, or another Chromium-based browser.')
+				setTimeout(() => setStatus(''), 8000)
+				return
+			}
+
+			// Check if directory access is already configured
+			const isConfigured = await isDirectoryAccessConfigured()
+			if (!isConfigured) {
+				setStatus('📁 Please select your /content/ directory in the next dialog...')
+				// Give user time to read the message
+				await new Promise(resolve => setTimeout(resolve, 1000))
+			}
+
+			// Get current content from editor
+			const contentPromise = new Promise((resolve) => {
+				const handleContentResponse = (event) => {
+					window.removeEventListener('llmcms:current-content-response', handleContentResponse)
+					resolve(event.detail)
+				}
+				window.addEventListener('llmcms:current-content-response', handleContentResponse)
+				
+				// Timeout after 5 seconds
+				setTimeout(() => {
+					window.removeEventListener('llmcms:current-content-response', handleContentResponse)
+					resolve({ error: 'Timeout waiting for editor response' })
+				}, 5000)
+			})
 			
-			setStatus('✅ Save requested')
-			setTimeout(() => setStatus(''), 3000)
+			// Request current content
+			window.dispatchEvent(new CustomEvent('llmcms:get-current-content'))
+			const currentContent = await contentPromise
+
+			if (currentContent.error) {
+				setStatus(`❌ ${currentContent.error}`)
+				setTimeout(() => setStatus(''), 5000)
+				return
+			}
+
+			if (!currentContent.slug) {
+				setStatus('❌ No document loaded in editor. Create a new document first.')
+				setTimeout(() => setStatus(''), 5000)
+				return
+			}
+
+			// Generate markdown content with frontmatter
+			const markdownContent = generateMarkdown(currentContent.frontmatter, currentContent.content)
+			
+			// Save directly using File System Access API
+			const result = await writeContentFile(currentContent.slug + '.md', markdownContent)
+
+			if (result.success) {
+				setStatus(`✅ Document saved: ${result.fileName}`)
+				setTimeout(() => setStatus(''), 5000)
+				// Refresh file list after successful save
+				await refreshFileList()
+			} else {
+				setStatus(`❌ Failed to save: ${result.error}`)
+				setTimeout(() => setStatus(''), 8000)
+			}
 		} catch (error) {
-			console.error('Save error:', error)
-			setStatus('❌ Save failed')
-			setTimeout(() => setStatus(''), 3000)
+			console.error('Error in handleSaveCurrent:', error)
+			setStatus(`❌ Error: ${error.message}`)
+			setTimeout(() => setStatus(''), 6000)
 		}
 	}
 
@@ -113,53 +246,174 @@ export default function Sidebar() {
 		try {
 			const { title, slug, author } = formData
 			
-			// Generate initial content with the title
-			const content = `# ${title}\n\nStart writing your content here...`
-			
-			// Create frontmatter
-			const frontmatter = {
-				title,
-				slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
-				date: new Date().toISOString().split('T')[0],
-				...(author && { author })
+			// Validate required fields
+			if (!title?.trim()) {
+				setStatus('❌ Title is required')
+				setTimeout(() => setStatus(''), 3000)
+				return
 			}
 
-			const result = await createContentFile(content, { frontmatter })
+			if (!isFileSystemAccessSupported()) {
+				setStatus('❌ File System Access API not supported. Please use Chrome, Edge, or another Chromium-based browser.')
+				setTimeout(() => setStatus(''), 8000)
+				return
+			}
+
+			// Check if directory access is already configured
+			const isConfigured = await isDirectoryAccessConfigured()
+			if (!isConfigured) {
+				setStatus('📁 Please select your /content/ directory in the next dialog...')
+				// Give user time to read the message
+				await new Promise(resolve => setTimeout(resolve, 1000))
+			}
+			
+			// Generate file slug from title if not provided
+			const finalSlug = slug?.trim() || title.trim()
+				.toLowerCase()
+				.replace(/[^a-z0-9\s-]/g, '')
+				.replace(/\s+/g, '-')
+				.slice(0, 50)
+			
+			// Create frontmatter object
+			const frontmatter = {
+				title: title.trim(),
+				date: new Date().toISOString().split('T')[0],
+				slug: finalSlug,
+				...(author?.trim() && { author: author.trim() })
+			}
+			
+			// Generate initial content
+			const content = `# ${title}\n\nStart writing your content here...`
+			
+			// Generate complete markdown with frontmatter
+			const markdownContent = generateMarkdown(frontmatter, content)
+			
+			// Write the file directly using File System Access API
+			const result = await writeContentFile(`${finalSlug}.md`, markdownContent)
 
 			if (result.success) {
 				setShowNewDocumentModal(false)
-				setStatus(`✅ Created ${frontmatter.slug}.md`)
 				
-				// Tell the editor to load the new file
-				const loadEvent = new CustomEvent('llmcms:load-file', {
-					detail: { slug: frontmatter.slug }
-				})
-				window.dispatchEvent(loadEvent)
+				// Show success message
+				setStatus(`✅ Document created: ${result.fileName}`)
 				
-				setTimeout(() => setStatus(''), 3000)
+				// Refresh file list after successful creation
+				await refreshFileList()
+				
+				// Load the new file in the editor
+				setTimeout(() => {
+					const loadEvent = new CustomEvent('llmcms:load-file', {
+						detail: { filename: finalSlug }
+					})
+					window.dispatchEvent(loadEvent)
+				}, 300)
+				setTimeout(() => setStatus(''), 5000)
 			} else {
-				setStatus('❌ Failed to create document')
-				setTimeout(() => setStatus(''), 3000)
+				setStatus(`❌ Failed to create document: ${result.error}`)
+				setTimeout(() => setStatus(''), 8000)
 			}
 		} catch (error) {
 			console.error('Create document error:', error)
-			setStatus('❌ Failed to create document')
-			setTimeout(() => setStatus(''), 3000)
+			setStatus(`❌ ${error.message || 'Failed to create document'}`)
+			setTimeout(() => setStatus(''), 6000)
 		} finally {
 			setIsCreating(false)
 		}
 	}
 
-	const handleFileSelect = (slug) => {
-		// Tell the editor to load the file
-		const loadEvent = new CustomEvent('llmcms:load-file', {
-			detail: { slug }
-		})
-		window.dispatchEvent(loadEvent)
+	const handleFileSelect = async (slug) => {
+		try {
+			setStatus(`📖 Loading ${slug}...`)
+			
+			// Handle welcome file specially - it's served from the public directory
+			if (slug === 'welcome-to-llmcms') {
+				const response = await fetch('/content/welcome-to-llmcms.md')
+				if (response.ok) {
+					const content = await response.text()
+					// Tell the editor to load the content directly
+					const loadEvent = new CustomEvent('llmcms:load-content', {
+						detail: { 
+							slug: 'welcome-to-llmcms',
+							content: content,
+							isWelcomeFile: true
+						}
+					})
+					window.dispatchEvent(loadEvent)
+					setStatus('✅ Welcome file loaded')
+					setTimeout(() => setStatus(''), 3000)
+				} else {
+					throw new Error(`Failed to fetch welcome file: ${response.status}`)
+				}
+			} else {
+				// For user files, use File System Access API
+				const isConfigured = await isDirectoryAccessConfigured()
+				
+				if (!isConfigured) {
+					setStatus('📁 Directory access not configured. Please create a new document first.')
+					setTimeout(() => setStatus(''), 5000)
+					return
+				}
+				
+				// Read the file directly using File System Access API
+				const result = await readContentFile(`${slug}.md`)
+				
+				if (result.success) {
+					// Parse the file content and send to editor
+					const loadEvent = new CustomEvent('llmcms:load-content', {
+						detail: { 
+							slug: slug,
+							content: result.content
+						}
+					})
+					window.dispatchEvent(loadEvent)
+					setStatus(`✅ ${slug} loaded`)
+					setTimeout(() => setStatus(''), 3000)
+				} else {
+					throw new Error(result.error || 'Failed to read file')
+				}
+			}
+		} catch (error) {
+			console.error('Error loading file:', error)
+			setStatus(`❌ Failed to load ${slug}: ${error.message}`)
+			setTimeout(() => setStatus(''), 5000)
+		}
+	}
+
+	const handleResetDirectory = async () => {
+		try {
+			setStatus('🔄 Resetting directory access...')
+			await resetDirectoryAccess()
+			setContentFiles([])
+			setStatus('✅ Directory access reset. Select folder when creating new documents.')
+			setTimeout(() => setStatus(''), 5000)
+		} catch (error) {
+			console.error('Error resetting directory access:', error)
+			setStatus(`❌ Failed to reset directory access: ${error.message}`)
+			setTimeout(() => setStatus(''), 5000)
+		}
 	}
 
 	return (
 		<div className="sidebar">
+			{showBrowserWarning && (
+				<div className="browser-warning">
+					<h4>⚠️ Browser Not Supported</h4>
+					<p>LLMCMS requires the File System Access API. Please use:</p>
+					<ul>
+						<li>✅ Chrome 86+</li>
+						<li>✅ Edge 86+</li>
+						<li>✅ Other Chromium browsers</li>
+					</ul>
+					<p>❌ Firefox and Safari are not supported.</p>
+					<button 
+						onClick={() => setShowBrowserWarning(false)}
+						className="dismiss-warning"
+					>
+						Dismiss
+					</button>
+				</div>
+			)}
+
 			{status && (
 				<div className="sidebar-status">
 					{status}
@@ -167,16 +421,48 @@ export default function Sidebar() {
 			)}
 
 			<h3>Content Files</h3>
-			<ul className="file-list">
-				<li>
-					<button 
-						className="file-link"
-						onClick={() => handleFileSelect('welcome-to-llmcms')}
-					>
-						📄 Welcome to LLMCMS
-					</button>
-				</li>
-			</ul>
+			{isLoadingFiles ? (
+				<div className="loading-files">
+					<span>📁 Loading files...</span>
+				</div>
+			) : (
+				<ul className="file-list">
+					{/* Always show welcome file first */}
+					<li>
+						<button 
+							className="file-link"
+							onClick={() => handleFileSelect('welcome-to-llmcms')}
+						>
+							📄 Welcome to LLMCMS
+						</button>
+					</li>
+					
+					{/* Show user files if any exist */}
+					{contentFiles.length > 0 && (
+						contentFiles.map((file) => (
+							<li key={file.name}>
+								<button 
+									className="file-link"
+									onClick={() => handleFileSelect(file.slug)}
+								>
+									📄 {file.name}
+								</button>
+							</li>
+						))
+					)}
+					
+					{/* Show helpful message if no user files */}
+					{contentFiles.length === 0 && (
+						<li className="no-files">
+							{isFileSystemSupported === false ? (
+								<span>Browser not supported - welcome file only</span>
+							) : (
+								<span>Create a new document to add more files</span>
+							)}
+						</li>
+					)}
+				</ul>
+			)}
 			
 			<h3>Quick Actions</h3>
 			<ul className="action-list">
@@ -184,7 +470,7 @@ export default function Sidebar() {
 					<button 
 						className="action-button new-document"
 						onClick={handleNewDocument}
-						disabled={isCreating}
+						disabled={isCreating || isFileSystemSupported === false}
 					>
 						📝 New Document
 					</button>
@@ -193,6 +479,7 @@ export default function Sidebar() {
 					<button 
 						className="action-button save-current"
 						onClick={handleSaveCurrent}
+						disabled={isFileSystemSupported === false}
 					>
 						💾 Save Current
 					</button>
@@ -206,6 +493,17 @@ export default function Sidebar() {
 						{isExporting ? '⏳' : '📦'} Export Site
 					</button>
 				</li>
+				{isFileSystemSupported && (
+					<li>
+						<button 
+							className="action-button reset-directory"
+							onClick={handleResetDirectory}
+							disabled={isExporting}
+						>
+							🔄 Reset Directory
+						</button>
+					</li>
+				)}
 			</ul>
 
 			{showNewDocumentModal && (
@@ -225,6 +523,7 @@ function NewDocumentModal({ onSubmit, onCancel, isCreating }) {
 		slug: '',
 		author: ''
 	})
+	const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
 
 	const handleSubmit = (e) => {
 		e.preventDefault()
@@ -237,9 +536,15 @@ function NewDocumentModal({ onSubmit, onCancel, isCreating }) {
 		setFormData(prev => ({
 			...prev,
 			title,
-			// Auto-generate slug from title if slug is empty
-			slug: prev.slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+			// Auto-generate slug from title only if user hasn't manually edited it
+			slug: slugManuallyEdited ? prev.slug : title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 		}))
+	}
+
+	const handleSlugChange = (e) => {
+		const slug = e.target.value
+		setFormData(prev => ({ ...prev, slug }))
+		setSlugManuallyEdited(true)
 	}
 
 	return (
@@ -277,7 +582,7 @@ function NewDocumentModal({ onSubmit, onCancel, isCreating }) {
 							type="text"
 							id="slug"
 							value={formData.slug}
-							onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
+							onChange={handleSlugChange}
 							placeholder="auto-generated-from-title"
 							disabled={isCreating}
 						/>

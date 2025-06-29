@@ -2,6 +2,7 @@
 import AppShell from '../components/AppShell.astro'
 import Sidebar from '../components/Sidebar.jsx'
 import MarkdownEditor from '../components/MarkdownEditor.jsx'
+import LLMCMSApp from '../components/LLMCMSApp.jsx'
 ---
 
 <html lang="en">
@@ -13,22 +14,24 @@ import MarkdownEditor from '../components/MarkdownEditor.jsx'
 		<title>LLMCMS - Local-First Content Management</title>
 	</head>
 	<body>
-		<AppShell>
-			<div slot="sidebar">
-				<Sidebar client:load />
-			</div>
-			
-			<div slot="content">
-				<h1>LLMCMS Editor</h1>
-				<p>Welcome to your local-first content management system. Content is stored in the <code>content/</code> folder.</p>
-				
-				<div style="height: 600px; margin-top: 1rem;">
-					<MarkdownEditor 
-						client:load 
-						initialSlug="welcome-to-llmcms"
-					/>
+		<LLMCMSApp client:load>
+			<AppShell>
+				<div slot="sidebar">
+					<Sidebar client:load />
 				</div>
-			</div>
-		</AppShell>
+				
+				<div slot="content">
+					<h1>LLMCMS Editor</h1>
+					<p>Welcome to your local-first content management system. Content is stored in your selected local folder.</p>
+					
+					<div style="height: 600px; margin-top: 1rem;">
+						<MarkdownEditor 
+							client:load 
+							initialSlug="welcome-to-llmcms"
+						/>
+					</div>
+				</div>
+			</AppShell>
+		</LLMCMSApp>
 	</body>
 </html>

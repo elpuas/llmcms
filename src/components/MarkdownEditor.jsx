@@ -19,27 +19,47 @@ export default function MarkdownEditor({
 	// Load file from content/ folder
 	const loadFile = async (slug) => {
 		setIsLoading(true)
-		setStatus('')
+		setStatus('📁 Loading file...')
 
 		try {
-			const result = await loadContentFile(slug)
+			// Validate slug
+			if (!slug || typeof slug !== 'string' || slug.trim() === '') {
+				throw new Error('Invalid file slug')
+			}
+
+			const result = await loadContentFile(slug.trim())
 			
-			if (result.success && editorRef.current) {
-				editorRef.current.setMarkdown(result.content)
-				setFrontmatter(result.frontmatter)
+			if (result.success) {
+				// Ensure we have valid content
+				const content = result.content || ''
+				const frontmatterData = result.frontmatter || {}
+				
+				if (editorRef.current) {
+					try {
+						editorRef.current.setMarkdown(content)
+					} catch (editorError) {
+						console.error('Editor setMarkdown error:', editorError)
+						// Try to set plain text if markdown parsing fails
+						editorRef.current.setHTML(`<p>Error loading content: ${editorError.message}</p>`)
+					}
+				}
+				
+				setFrontmatter(frontmatterData)
 				setCurrentSlug(slug)
 				setStatus(`✅ Loaded ${slug}.md`)
-				onContentChange?.(result.content)
-				onFrontmatterChange?.(result.frontmatter)
+				onContentChange?.(content)
+				onFrontmatterChange?.(frontmatterData)
 				setTimeout(() => setStatus(''), 3000)
 			} else {
-				setStatus(`❌ Failed to load ${slug}.md`)
-				setTimeout(() => setStatus(''), 3000)
+				const errorMsg = result.error || 'Unknown error'
+				console.warn(`Failed to load ${slug}.md:`, errorMsg)
+				setStatus(`❌ Failed to load ${slug}.md: ${errorMsg}`)
+				setTimeout(() => setStatus(''), 5000)
 			}
 		} catch (error) {
 			console.error('Load error:', error)
-			setStatus('❌ Load failed')
-			setTimeout(() => setStatus(''), 3000)
+			setStatus(`❌ Load failed: ${error.message}`)
+			setTimeout(() => setStatus(''), 5000)
 		} finally {
 			setIsLoading(false)
 		}
@@ -54,23 +74,41 @@ export default function MarkdownEditor({
 		}
 
 		setIsLoading(true)
-		setStatus('')
+		setStatus('💾 Saving...')
 
 		try {
-			const content = editorRef.current.getMarkdown()
-			const result = await saveContentFile(currentSlug, content, frontmatter)
+			// Validate editor and get content
+			let content
+			try {
+				content = editorRef.current.getMarkdown() || ''
+			} catch (editorError) {
+				console.error('Error getting content from editor:', editorError)
+				throw new Error('Failed to get content from editor')
+			}
+
+			// Validate content type
+			if (typeof content !== 'string') {
+				console.warn('Editor returned non-string content:', typeof content)
+				content = String(content)
+			}
+
+			// Validate frontmatter
+			const frontmatterToSave = frontmatter && typeof frontmatter === 'object' ? frontmatter : {}
+
+			const result = await saveContentFile(currentSlug, content, frontmatterToSave)
 
 			if (result.success) {
-				setStatus(`✅ Saved ${currentSlug}.md`)
-				setTimeout(() => setStatus(''), 3000)
+				setStatus(`✅ Document saved: ${result.fileName}`)
+				setTimeout(() => setStatus(''), 5000)
 			} else {
-				setStatus('❌ Save failed')
-				setTimeout(() => setStatus(''), 3000)
+				const errorMsg = result.error || 'Unknown error'
+				setStatus(`❌ Save failed: ${errorMsg}`)
+				setTimeout(() => setStatus(''), 5000)
 			}
 		} catch (error) {
 			console.error('Save error:', error)
-			setStatus('❌ Save failed')
-			setTimeout(() => setStatus(''), 3000)
+			setStatus(`❌ Save failed: ${error.message}`)
+			setTimeout(() => setStatus(''), 5000)
 		} finally {
 			setIsLoading(false)
 		}
@@ -79,8 +117,52 @@ export default function MarkdownEditor({
 	// Event handlers for custom events from Sidebar
 	useEffect(() => {
 		const handleLoadFile = (event) => {
-			if (event.detail?.slug) {
-				loadFile(event.detail.slug)
+			const fileToLoad = event.detail?.filename || event.detail?.slug
+			if (fileToLoad) {
+				loadFile(fileToLoad)
+			}
+		}
+
+		const handleLoadContent = (event) => {
+			// Handle direct content loading (for welcome file and other special cases)
+			const { slug, content, isWelcomeFile } = event.detail || {}
+			if (slug && content) {
+				try {
+					// Parse content if it has frontmatter
+					let bodyContent = content
+					let frontmatterData = {}
+					
+					if (content.includes('---')) {
+						const parsed = parseMarkdown(content)
+						bodyContent = parsed.content
+						frontmatterData = parsed.frontmatter
+					}
+					
+					// Set content in editor
+					if (editorRef.current) {
+						editorRef.current.setMarkdown(bodyContent)
+					}
+					
+					// Update state
+					setFrontmatter(frontmatterData)
+					setCurrentSlug(slug)
+					
+					// Show status
+					if (isWelcomeFile) {
+						setStatus('✅ Welcome file loaded')
+					} else {
+						setStatus(`✅ Loaded ${slug}.md`)
+					}
+					
+					onContentChange?.(bodyContent)
+					onFrontmatterChange?.(frontmatterData)
+					setTimeout(() => setStatus(''), 3000)
+					
+				} catch (error) {
+					console.error('Error loading content:', error)
+					setStatus(`❌ Failed to load content: ${error.message}`)
+					setTimeout(() => setStatus(''), 5000)
+				}
 			}
 		}
 
@@ -94,11 +176,20 @@ export default function MarkdownEditor({
 				const content = editorRef.current.getMarkdown()
 				const markdownWithFrontmatter = generateMarkdown(content, frontmatter)
 				
-				// Dispatch response event (you'd handle this in the Sidebar)
+				// Dispatch response event with content, slug, and frontmatter
 				const responseEvent = new CustomEvent('llmcms:current-content-response', {
 					detail: { 
 						content: markdownWithFrontmatter, 
-						slug: currentSlug 
+						slug: currentSlug,
+						frontmatter: frontmatter || {}
+					}
+				})
+				window.dispatchEvent(responseEvent)
+			} else {
+				// Send error response if no content loaded
+				const responseEvent = new CustomEvent('llmcms:current-content-response', {
+					detail: { 
+						error: 'No document loaded in editor' 
 					}
 				})
 				window.dispatchEvent(responseEvent)
@@ -107,12 +198,14 @@ export default function MarkdownEditor({
 
 		// Add event listeners
 		window.addEventListener('llmcms:load-file', handleLoadFile)
+		window.addEventListener('llmcms:load-content', handleLoadContent)
 		window.addEventListener('llmcms:save-current', handleSaveCurrent)
 		window.addEventListener('llmcms:get-current-content', handleGetCurrentContent)
 
 		// Cleanup
 		return () => {
 			window.removeEventListener('llmcms:load-file', handleLoadFile)
+			window.removeEventListener('llmcms:load-content', handleLoadContent)
 			window.removeEventListener('llmcms:save-current', handleSaveCurrent)
 			window.removeEventListener('llmcms:get-current-content', handleGetCurrentContent)
 		}
