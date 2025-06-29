@@ -1,43 +1,20 @@
-import { useRef, useEffect, useState, useImperativeHandle, forwardRef } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import '@toast-ui/editor/dist/toastui-editor.css'
 import './MarkdownEditor.css'
 import { loadContentFile, saveContentFile, parseMarkdown, generateMarkdown, getFileMetadata } from '../utils/contentManager.js'
 
-const MarkdownEditor = forwardRef(function MarkdownEditor({ 
+export default function MarkdownEditor({ 
 	initialContent = '',
 	initialSlug = null,
 	onContentChange,
 	onFrontmatterChange 
-}, ref) {
+}) {
 	const editorRef = useRef(null)
 	const containerRef = useRef(null)
 	const [currentSlug, setCurrentSlug] = useState(initialSlug)
 	const [frontmatter, setFrontmatter] = useState({})
 	const [isLoading, setIsLoading] = useState(false)
 	const [status, setStatus] = useState('')
-
-	// Expose methods to parent component
-	useImperativeHandle(ref, () => ({
-		loadFile: async (slug) => {
-			await loadFile(slug)
-		},
-		saveCurrentFile: async () => {
-			await saveCurrentFile()
-		},
-		getFrontmatter: () => frontmatter,
-		setFrontmatter: (newFrontmatter) => {
-			setFrontmatter(prev => ({ ...prev, ...newFrontmatter }))
-			onFrontmatterChange?.(newFrontmatter)
-		},
-		getCurrentContent: () => {
-			return editorRef.current ? editorRef.current.getMarkdown() : ''
-		},
-		loadContent: (content) => {
-			if (editorRef.current) {
-				editorRef.current.setMarkdown(content)
-			}
-		}
-	}))
 
 	// Load file from content/ folder
 	const loadFile = async (slug) => {
@@ -98,6 +75,48 @@ const MarkdownEditor = forwardRef(function MarkdownEditor({
 			setIsLoading(false)
 		}
 	}
+
+	// Event handlers for custom events from Sidebar
+	useEffect(() => {
+		const handleLoadFile = (event) => {
+			if (event.detail?.slug) {
+				loadFile(event.detail.slug)
+			}
+		}
+
+		const handleSaveCurrent = () => {
+			saveCurrentFile()
+		}
+
+		const handleGetCurrentContent = () => {
+			// This is a simplified approach - in a real app you'd use a proper event system
+			if (editorRef.current && currentSlug) {
+				const content = editorRef.current.getMarkdown()
+				const markdownWithFrontmatter = generateMarkdown(content, frontmatter)
+				
+				// Dispatch response event (you'd handle this in the Sidebar)
+				const responseEvent = new CustomEvent('llmcms:current-content-response', {
+					detail: { 
+						content: markdownWithFrontmatter, 
+						slug: currentSlug 
+					}
+				})
+				window.dispatchEvent(responseEvent)
+			}
+		}
+
+		// Add event listeners
+		window.addEventListener('llmcms:load-file', handleLoadFile)
+		window.addEventListener('llmcms:save-current', handleSaveCurrent)
+		window.addEventListener('llmcms:get-current-content', handleGetCurrentContent)
+
+		// Cleanup
+		return () => {
+			window.removeEventListener('llmcms:load-file', handleLoadFile)
+			window.removeEventListener('llmcms:save-current', handleSaveCurrent)
+			window.removeEventListener('llmcms:get-current-content', handleGetCurrentContent)
+		}
+	}, [currentSlug, frontmatter])
 
 	useEffect(() => {
 		// Dynamic import to avoid SSR issues
@@ -190,8 +209,6 @@ const MarkdownEditor = forwardRef(function MarkdownEditor({
 			</div>
 		</div>
 	)
-})
-
-export default MarkdownEditor
+}
 
  
