@@ -14,28 +14,28 @@ import MarkdownEditor from '../components/MarkdownEditor.jsx'
 	<body>
 		<AppShell>
 			<div slot="sidebar">
-				<h3>Navigation</h3>
+				<h3>Content Files</h3>
 				<ul>
-					<li><a href="#content">Content</a></li>
-					<li><a href="#editor">Editor</a></li>
-					<li><a href="#settings">Settings</a></li>
-					<li><a href="#export">Export</a></li>
+					<li><a href="#welcome-to-llmcms">📄 Welcome to LLMCMS</a></li>
 				</ul>
 				
 				<h3>Quick Actions</h3>
 				<ul>
-					<li><a href="#new">New Document</a></li>
-					<li><a href="#save">Save</a></li>
-					<li><a href="#preview">Preview</a></li>
+					<li><a href="#new">📝 New Document</a></li>
+					<li><a href="#save">💾 Save Current</a></li>
+					<li><a href="#export">📦 Export Site</a></li>
 				</ul>
 			</div>
 			
 			<div slot="content">
 				<h1>LLMCMS Editor</h1>
-				<p>Welcome to your local-first content management system. Start editing below:</p>
+				<p>Welcome to your local-first content management system. Content is stored in the <code>content/</code> folder.</p>
 				
-								<div style="height: 600px; margin-top: 1rem;">
-					<MarkdownEditor client:load />
+				<div style="height: 600px; margin-top: 1rem;">
+					<MarkdownEditor 
+						client:load 
+						initialSlug="welcome-to-llmcms"
+					/>
 				</div>
 			</div>
 		</AppShell>

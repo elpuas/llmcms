@@ -1,13 +1,103 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState, useImperativeHandle, forwardRef } from 'react'
 import '@toast-ui/editor/dist/toastui-editor.css'
 import './MarkdownEditor.css'
+import { loadContentFile, saveContentFile, parseMarkdown, generateMarkdown, getFileMetadata } from '../utils/contentManager.js'
 
-export default function MarkdownEditor({ 
-	initialContent = '# Welcome to LLMCMS\n\nStart writing your content here...', 
-	onContentChange 
-}) {
+const MarkdownEditor = forwardRef(function MarkdownEditor({ 
+	initialContent = '',
+	initialSlug = null,
+	onContentChange,
+	onFrontmatterChange 
+}, ref) {
 	const editorRef = useRef(null)
 	const containerRef = useRef(null)
+	const [currentSlug, setCurrentSlug] = useState(initialSlug)
+	const [frontmatter, setFrontmatter] = useState({})
+	const [isLoading, setIsLoading] = useState(false)
+	const [status, setStatus] = useState('')
+
+	// Expose methods to parent component
+	useImperativeHandle(ref, () => ({
+		loadFile: async (slug) => {
+			await loadFile(slug)
+		},
+		saveCurrentFile: async () => {
+			await saveCurrentFile()
+		},
+		getFrontmatter: () => frontmatter,
+		setFrontmatter: (newFrontmatter) => {
+			setFrontmatter(prev => ({ ...prev, ...newFrontmatter }))
+			onFrontmatterChange?.(newFrontmatter)
+		},
+		getCurrentContent: () => {
+			return editorRef.current ? editorRef.current.getMarkdown() : ''
+		},
+		loadContent: (content) => {
+			if (editorRef.current) {
+				editorRef.current.setMarkdown(content)
+			}
+		}
+	}))
+
+	// Load file from content/ folder
+	const loadFile = async (slug) => {
+		setIsLoading(true)
+		setStatus('')
+
+		try {
+			const result = await loadContentFile(slug)
+			
+			if (result.success && editorRef.current) {
+				editorRef.current.setMarkdown(result.content)
+				setFrontmatter(result.frontmatter)
+				setCurrentSlug(slug)
+				setStatus(`✅ Loaded ${slug}.md`)
+				onContentChange?.(result.content)
+				onFrontmatterChange?.(result.frontmatter)
+				setTimeout(() => setStatus(''), 3000)
+			} else {
+				setStatus(`❌ Failed to load ${slug}.md`)
+				setTimeout(() => setStatus(''), 3000)
+			}
+		} catch (error) {
+			console.error('Load error:', error)
+			setStatus('❌ Load failed')
+			setTimeout(() => setStatus(''), 3000)
+		} finally {
+			setIsLoading(false)
+		}
+	}
+
+	// Save current file to content/ folder
+	const saveCurrentFile = async () => {
+		if (!editorRef.current || !currentSlug) {
+			setStatus('❌ No file loaded to save')
+			setTimeout(() => setStatus(''), 3000)
+			return
+		}
+
+		setIsLoading(true)
+		setStatus('')
+
+		try {
+			const content = editorRef.current.getMarkdown()
+			const result = await saveContentFile(currentSlug, content, frontmatter)
+
+			if (result.success) {
+				setStatus(`✅ Saved ${currentSlug}.md`)
+				setTimeout(() => setStatus(''), 3000)
+			} else {
+				setStatus('❌ Save failed')
+				setTimeout(() => setStatus(''), 3000)
+			}
+		} catch (error) {
+			console.error('Save error:', error)
+			setStatus('❌ Save failed')
+			setTimeout(() => setStatus(''), 3000)
+		} finally {
+			setIsLoading(false)
+		}
+	}
 
 	useEffect(() => {
 		// Dynamic import to avoid SSR issues
@@ -15,12 +105,23 @@ export default function MarkdownEditor({
 			if (typeof window !== 'undefined' && containerRef.current) {
 				const { Editor } = await import('@toast-ui/editor')
 				
+				// Parse initial content if it has frontmatter
+				let content = initialContent
+				let initialFrontmatter = {}
+				
+				if (initialContent && initialContent.includes('---')) {
+					const parsed = parseMarkdown(initialContent)
+					content = parsed.content
+					initialFrontmatter = parsed.frontmatter
+					setFrontmatter(initialFrontmatter)
+				}
+				
 				const editor = new Editor({
 					el: containerRef.current,
 					height: '500px',
 					initialEditType: 'wysiwyg',
 					previewStyle: 'vertical',
-					initialValue: initialContent,
+					initialValue: content,
 					hideModeSwitch: true,
 					useCommandShortcut: true,
 					toolbarItems: [
@@ -32,8 +133,8 @@ export default function MarkdownEditor({
 					],
 					events: {
 						change: () => {
-							const content = editor.getMarkdown()
-							onContentChange?.(content)
+							const editorContent = editor.getMarkdown()
+							onContentChange?.(editorContent)
 						}
 					},
 					usageStatistics: false
@@ -52,15 +153,36 @@ export default function MarkdownEditor({
 		}
 	}, [initialContent, onContentChange])
 
+	// Load initial file if slug is provided
+	useEffect(() => {
+		if (initialSlug && !initialContent) {
+			loadFile(initialSlug)
+		}
+	}, [initialSlug])
+
 	return (
 		<div className="markdown-editor">
 			<div className="editor-header">
-				<span className="editor-title">Markdown Editor</span>
+				<div className="editor-title-section">
+					<span className="editor-title">Markdown Editor</span>
+					{currentSlug && (
+						<span className="current-file">
+							📄 {currentSlug}.md
+						</span>
+					)}
+				</div>
 				<div className="editor-status">
 					<span className="status-indicator">●</span>
 					<span>WYSIWYG Mode</span>
 				</div>
 			</div>
+			
+			{status && (
+				<div className="status-notification">
+					{status}
+				</div>
+			)}
+
 			<div className="editor-content">
 				<div className="toast-editor-container">
 					<div ref={containerRef}></div>
@@ -68,6 +190,8 @@ export default function MarkdownEditor({
 			</div>
 		</div>
 	)
-}
+})
+
+export default MarkdownEditor
 
  
