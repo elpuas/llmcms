@@ -1,0 +1,96 @@
+---
+// AppShell.astro - Main layout component for LLMCMS
+---
+
+<div class="app-shell">
+	<header class="app-header">
+		<h1 class="app-title">LLMCMS</h1>
+		<p class="app-subtitle">Local-First Content Management</p>
+	</header>
+	
+	<main class="app-main">
+		<aside class="app-sidebar">
+			<slot name="sidebar" />
+		</aside>
+		
+		<section class="app-content">
+			<slot name="content" />
+		</section>
+	</main>
+</div>
+
+<style>
+	.app-shell {
+		display: grid;
+		grid-template-rows: auto 1fr;
+		min-height: 100vh;
+		font-family: system-ui, -apple-system, sans-serif;
+		background-color: #fafafa;
+		color: #333;
+	}
+
+	.app-header {
+		background-color: #2563eb;
+		color: white;
+		padding: 1rem 2rem;
+		border-bottom: 1px solid #e5e7eb;
+	}
+
+	.app-title {
+		margin: 0;
+		font-size: 1.5rem;
+		font-weight: 600;
+		letter-spacing: -0.025em;
+	}
+
+	.app-subtitle {
+		margin: 0.25rem 0 0 0;
+		font-size: 0.875rem;
+		opacity: 0.9;
+		font-weight: 400;
+	}
+
+	.app-main {
+		display: grid;
+		grid-template-columns: 280px 1fr;
+		gap: 0;
+		flex: 1;
+	}
+
+	.app-sidebar {
+		background-color: #f8fafc;
+		border-right: 1px solid #e5e7eb;
+		padding: 1.5rem;
+		overflow-y: auto;
+	}
+
+	.app-content {
+		background-color: white;
+		padding: 2rem;
+		overflow-y: auto;
+	}
+
+	/* Responsive design */
+	@media (max-width: 768px) {
+		.app-main {
+			grid-template-columns: 1fr;
+			grid-template-rows: auto 1fr;
+		}
+		
+		.app-sidebar {
+			border-right: none;
+			border-bottom: 1px solid #e5e7eb;
+			padding: 1rem;
+		}
+		
+		.app-content {
+			padding: 1rem;
+		}
+	}
+
+	/* Ensure proper scrolling */
+	.app-sidebar,
+	.app-content {
+		max-height: calc(100vh - 80px);
+	}
+</style> 

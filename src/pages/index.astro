@@ -1,5 +1,5 @@
 ---
-
+import AppShell from '../components/AppShell.astro'
 ---
 
 <html lang="en">
@@ -8,9 +8,24 @@
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
+		<title>LLMCMS - Local-First Content Management</title>
 	</head>
 	<body>
-		<h1>Astro</h1>
+		<AppShell>
+			<div slot="sidebar">
+				<h3>Navigation</h3>
+				<ul>
+					<li><a href="#content">Content</a></li>
+					<li><a href="#settings">Settings</a></li>
+					<li><a href="#export">Export</a></li>
+				</ul>
+			</div>
+			
+			<div slot="content">
+				<h1>Welcome to LLMCMS</h1>
+				<p>Your local-first content management system is ready to use.</p>
+				<p>This is a demonstration of the AppShell component with sidebar and content slots.</p>
+			</div>
+		</AppShell>
 	</body>
 </html>
