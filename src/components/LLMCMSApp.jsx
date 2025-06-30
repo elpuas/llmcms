@@ -63,7 +63,7 @@ export default function LLMCMSApp({ children }) {
 				fontSize: '1.2rem',
 				color: '#64748b'
 			}}>
-				⏳ Loading LLMCMS...
+				Loading LLMCMS...
 			</div>
 		)
 	}
@@ -80,7 +80,7 @@ export default function LLMCMSApp({ children }) {
 				gap: '1rem',
 				color: '#dc2626'
 			}}>
-				<h2>❌ Error</h2>
+				<h2>Error</h2>
 				<p>{error}</p>
 				<button 
 					onClick={() => {
@@ -96,7 +96,7 @@ export default function LLMCMSApp({ children }) {
 						cursor: 'pointer'
 					}}
 				>
-					🔄 Retry
+					Retry
 				</button>
 			</div>
 		)

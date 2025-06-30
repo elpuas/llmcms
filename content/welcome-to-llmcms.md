@@ -1,11 +1,7 @@
 ---
-title: Welcome to LLMCMS
+title: Untitled Document
 date: 2025-06-29
-slug: welcome-to-llmcms
+slug: untitled-document
 ---
 
-# Welcome to LLMCMS
-
-Start writing your content here...
-
-This is a local-first content management system that stores all your content in the `content/` folder as Markdown files with frontmatter.
+[object Object]
